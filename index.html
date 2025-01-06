@@ -1,0 +1,908 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>Walking simulator</title>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+    </head>
+    <body>
+        <canvas id="canvas" width="800" height="600" style="border:1px white" tabindex="1"></canvas>
+        <script>
+            
+            /*Araib Basit
+             * January 6 2025
+             * A video game where you wake up and are now stranded on a random world.
+             * you walk around collecting orbs and once you collect all of them you go to 
+             * a portal back in the middle end "escape" the world 
+             */
+            
+            //setup variables
+            var ctx;
+            var WIDTH;
+            var HEIGHT;
+            var gameState;
+            var pressC;
+            var pressUp;
+            var pressDown;
+            var pressLeft;
+            var pressRight;
+            var interact;
+            var escapeKey;
+            var titleButtonPressed = "play";
+            var thoughtBubbleImg = new Image();
+            var activeTextbox = false;
+            var textboxText = "";
+            var interactedName = "";
+            var purpleOrbFound = false;
+            var blueOrbFound = false;
+            var greenOrbFound = false;
+            var orangeOrbFound = false;
+            var orbNotFound = new Image();
+            var purpleOrbSmall = new Image();
+            var blueOrbSmall = new Image();
+            var greenOrbSmall = new Image();
+            var orangeOrbSmall = new Image();
+
+            //game background function
+            function drawGameBackground() {
+                //depending on screen draw the necessary background
+                //check which x they are on
+                //i was going to add different background but i ended up not doing that
+                if (player.screenX === 1) {
+                    //then check which y level they are on
+                    if (player.screenY === 1) {
+                        //clear screen
+                        clear("#0AC526");
+                    } else if (player.screenY === 2) {
+                        //clear screen
+                        clear("#0AC526");
+                    } else if (player.screenY === 3) {
+                        //clear screen
+                        clear("#0AC526");
+                    }
+                } else if (player.screenX === 2) {
+                    //then check which y level they are on
+                    if (player.screenY === 1) {
+                        //clear screen
+                        clear("#0AC526");
+                    } else if (player.screenY === 2) {
+                        //clear screen
+                        clear("#0AC526");
+                    } else if (player.screenY === 3) {
+                        //clear screen
+                        clear("#0AC526");
+
+                    }
+                } else if (player.screenX === 3) {
+                    //then check which y level they are on
+                    if (player.screenY === 1) {
+                        //clear screen
+                        clear("#0AC526");
+                    } else if (player.screenY === 2) {
+                        //clear screen
+                        clear("#0AC526");
+                    } else if (player.screenY === 3) {
+                        //clear screen
+                        clear("#0AC526");
+                    }
+                }
+            }
+
+            //draw game progress
+            function drawProgress() {
+                //draw a grey rectangle in top left
+                ctx.fillStyle = "#B2B2B2";
+                rect(0, 0, 150, 38, false, "#000000", 1);
+
+                //if the orb is found draw it otherwise draw orbnotfound
+                if (purpleOrbFound) {
+                    ctx.drawImage(purpleOrbSmall,2,1);
+                } else {
+                    ctx.drawImage(orbNotFound,2,1);
+                }
+                if (blueOrbFound) {
+                    ctx.drawImage(blueOrbSmall,39,1);
+                } else {
+                    ctx.drawImage(orbNotFound,39,1);
+                }
+                if (greenOrbFound) {
+                    ctx.drawImage(greenOrbSmall,76,1);
+                } else {
+                    ctx.drawImage(orbNotFound,76,1);
+                }
+                if (orangeOrbFound) {
+                    ctx.drawImage(orangeOrbSmall,113,1);
+                } else {
+                    ctx.drawImage(orbNotFound,113,1);
+                }
+            }
+
+            //draw other entities that should be on the screen
+            function drawGameEntities() {
+                //go through the array of entities and invoke each of their show function
+                for (var i = 0; i < entities.length; i++) {
+                    entities[i].show();
+                }
+            }
+
+            //draws the player screen location
+            function drawScreenLocation() {
+                //set font and colour
+                ctx.fillStyle = "#ffffff";
+                ctx.font = "15px 'Press Start 2P'";
+                //draw the location at the top of the screen
+                ctx.fillText("Screen: " + player.screenX + " - " + player.screenY, 300, 30);
+            }
+
+            //constructor function for interactable entity
+            var InteractableEntity = function (name, x, y, screenX, screenY, width, height, interactText, imageLocation) {
+                this.x = x; //set all properties to the function arguments
+                this.y = y;
+                this.screenX = screenX;
+                this.screenY = screenY;
+                this.width = width;
+                this.height = height;
+                this.interactText = interactText;
+                this.image = new Image();
+                this.imageLocation = imageLocation;
+                this.name = name;
+            };
+
+            //add the function to show the image
+            InteractableEntity.prototype.show = function () {
+                //if the player is on the same screen where the entity is then draw it
+                if (player.screenX === this.screenX && player.screenY === this.screenY) {
+                    //specific show case depending on object because the orbs and portal only spawn in certain cases
+                    if (this.name === "purpleOrb") {
+                        //only if it is not found then show it
+                        if (!purpleOrbFound) {
+                            ctx.drawImage(this.image, this.x, this.y);
+                        }
+                    } else if (this.name === "blueOrb") {
+                        //only if it is not found then show it
+                        if (!blueOrbFound) {
+                            ctx.drawImage(this.image, this.x, this.y);
+                        }
+                    } else if (this.name === "orangeOrb") {
+                        //only if it is not found then show it
+                        if (!orangeOrbFound) {
+                            ctx.drawImage(this.image, this.x, this.y);
+                        }
+                    } else if (this.name === "greenOrb") {
+                        //only if it is not found then show it
+                        if (!greenOrbFound) {
+                            ctx.drawImage(this.image, this.x, this.y);
+                        }
+                    } else if (this.name === "portal") {
+                        //only if all the other orbs are found then show it
+                        if (purpleOrbFound && blueOrbFound && greenOrbFound && orangeOrbFound) {
+                            ctx.drawImage(this.image, this.x, this.y);
+                        }
+                    } else {
+                        //draw the image
+                        ctx.drawImage(this.image, this.x, this.y);
+                    }
+                }
+            };
+
+            //add the function for if the player interacts with the entity
+            InteractableEntity.prototype.interact = function () {
+                //if screens are same and player is near entity and they press space show textbox
+                if (player.screenX === this.screenX && player.screenY === this.screenY && interact && player.x < (this.x + this.width + 2) && (player.x + player.width) > this.x && player.y < (this.y + this.height + 2) && (player.y + player.height) > this.y) {
+                    //depending on the object we will have different interact scenarios
+                    if (this.name === "purpleOrb") {
+                        //only if it is not found then we interact with it
+                        if (!purpleOrbFound) {
+                            //set active textbox to true and set textbok text to the text of this entity
+                            activeTextbox = true;
+                            textboxText = this.interactText;
+                            interactedName = this.name;
+                        }
+                    } else if (this.name === "blueOrb") {
+                        //only if it is not found then we interact with it
+                        if (!blueOrbFound) {
+                            //set active textbox to true and set textbok text to the text of this entity
+                            activeTextbox = true;
+                            textboxText = this.interactText;
+                            interactedName = this.name;
+                        }
+                    } else if (this.name === "orangeOrb") {
+                        //only if it is not found then we interact with it
+                        if (!orangeOrbFound) {
+                            //set active textbox to true and set textbok text to the text of this entity
+                            activeTextbox = true;
+                            textboxText = this.interactText;
+                            interactedName = this.name;
+                        }
+                    } else if (this.name === "greenOrb") {
+                        //only if it is not found then we interact with it
+                        if (!greenOrbFound) {
+                            //set active textbox to true and set textbok text to the text of this entity
+                            activeTextbox = true;
+                            textboxText = this.interactText;
+                            interactedName = this.name;
+                        }
+                    } else if (this.name === "portal") {
+                        //only if all the other orbs are found then interact with it
+                        if (purpleOrbFound && blueOrbFound && greenOrbFound && orangeOrbFound) {
+                            //set active textbox to true and set textbok text to the text of this entity
+                            activeTextbox = true;
+                            textboxText = this.interactText;
+                            interactedName = this.name;
+                        }
+                    } else {
+                        //set active textbox to true and set textbok text to the text of this entity
+                        activeTextbox = true;
+                        textboxText = this.interactText;
+                        interactedName = this.name;
+                    }
+                }
+            };
+
+            //make all the entities
+            var blueOrb = new InteractableEntity("blueOrb", Math.floor(Math.random() * 700) + 50, Math.floor(Math.random() * 500) + 50, Math.floor(Math.random() * 3) + 1, Math.floor(Math.random() * 3) + 1, 50, 50, "You found a blue orb", "BlueOrbBig.png");
+            var purpleOrb = new InteractableEntity("purpleOrb", Math.floor(Math.random() * 700) + 50, Math.floor(Math.random() * 500) + 50, Math.floor(Math.random() * 3) + 1, Math.floor(Math.random() * 3) + 1, 50, 50, "You found a purple orb", "PurpleOrbBig.png");
+            var greenOrb = new InteractableEntity("greenOrb", Math.floor(Math.random() * 700) + 50, Math.floor(Math.random() * 500) + 50, Math.floor(Math.random() * 3) + 1, Math.floor(Math.random() * 3) + 1, 50, 50, "You found a green orb", "GreenOrbBig.png");
+            var orangeOrb = new InteractableEntity("orangeOrb", Math.floor(Math.random() * 700) + 50, Math.floor(Math.random() * 500) + 50, Math.floor(Math.random() * 3) + 1, Math.floor(Math.random() * 3) + 1, 50, 50, "You found a orange orb", "OrangeOrbBig.png");
+            var npc1 = new InteractableEntity("npc1", 500, 500, 2, 2, 41, 31, "Wow... an emtpy world. Amazing.", "npcUp.png");
+            var npc2 = new InteractableEntity("npc2", 580, 440, 2, 2, 31, 41, "There are orbs around here.", "npcLeft.png");
+            var portal = new InteractableEntity("portal", 327, 227, 2, 2, 147, 147, "You enter the portal", "Portal.png");
+            var entities = [blueOrb, purpleOrb, greenOrb, orangeOrb, npc1, portal,npc2];
+
+            //a function that displays a textbox
+            function textbox(text) {
+                //make the user not able to move anymore
+                player.ableToMoveDown = false;
+                player.ableToMoveUp = false;
+                player.ableToMoveLeft = false;
+                player.ableToMoveRight = false;
+
+                //if the player is on the top half draw the textbox on the bottom half otherwise draw it on the top hals
+                //make a variable for the y of the textbox
+                var boxY;
+                //if the player is on the bottom half
+                if (player.y > 300) {
+                    //then put the textbox on the top
+                    boxY = 50;
+                } else {
+                    //otherwise put it on the bottom
+                    boxY = 450;
+                }
+
+                //draw the background box as black
+                ctx.fillStyle = "#000000";
+                rect(200, boxY, 400, 100, true, "#ffffff", 8);
+
+                //draw text in the box
+                ctx.font = "15px 'Press Start 2P'";
+                ctx.fillStyle = "#ffffff";
+                ctx.fillText(textboxText, 220, boxY + 55, 379);
+
+                //draw the text to tell the user to press c to continue
+                ctx.font = "8px 'Press Start 2P'";
+                ctx.fillText("Press C to continue", 440, boxY + 95);
+
+            }
+
+            //title guy object
+            var titleGuy = {
+                x: 100, //current x and y
+                y: 490,
+                newSpotX: Math.floor(Math.random() * 710) + 1, //x of new spot that is travelling to
+                titleStillImgRight: new Image(), //all the animation images
+                titleLeftUpImgRight: new Image(),
+                titleRightUpImgRight: new Image(),
+                titleStillImgLeft: new Image(),
+                titleLeftUpImgLeft: new Image(),
+                titleRightUpImgLeft: new Image(),
+                frame: 0, //which frame of animation is on
+                moveRight: true, // if is moving right or not
+                //generates new spot to go to
+                newSpot: function () {
+                    //check if we need to move to a new spot and if we do then generate a new spot to go to
+                    if (this.x === this.newSpotX) {
+                        this.newSpotX = Math.floor(Math.random() * 710) + 1;
+                    }
+                },
+                //moves character
+                move: function () {
+                    //if the new spots x is higher than our spot we are moving right otherwise we will go left
+                    if (this.newSpotX > this.x) {
+                        this.moveRight = true;
+                        this.x++;
+                    } else {
+                        this.moveRight = false;
+                        this.x--;
+                    }
+                },
+                //animates character - a walking animation
+                animate: function () {
+                    //depending on the counter and direction will draw a specific image at the guys 
+                    //position so there will be a sequnce that will happen that will look like an animation
+                    // (i didn't know how to actually do an animation so I just did this)
+                    if (this.frame >= 0 && this.frame < 10) {
+                        if (this.moveRight) {
+                            ctx.drawImage(this.titleLeftUpImgRight, this.x, this.y);
+                        } else {
+                            ctx.drawImage(this.titleLeftUpImgLeft, this.x, this.y);
+                        }
+                        this.frame++;
+                    } else if (this.frame >= 10 && this.frame < 20) {
+                        if (this.moveRight) {
+                            ctx.drawImage(this.titleStillImgRight, this.x, this.y);
+                        } else {
+                            ctx.drawImage(this.titleStillImgLeft, this.x, this.y);
+                        }
+                        this.frame++;
+                    } else if (this.frame >= 20 && this.frame < 30) {
+                        if (this.moveRight) {
+                            ctx.drawImage(this.titleRightUpImgRight, this.x, this.y);
+                        } else {
+                            ctx.drawImage(this.titleRightUpImgLeft, this.x, this.y);
+                        }
+                        this.frame++;
+                    } else if (this.frame >= 30 && this.frame < 40) {
+                        if (this.moveRight) {
+                            ctx.drawImage(this.titleStillImgRight, this.x, this.y);
+                        } else {
+                            ctx.drawImage(this.titleStillImgLeft, this.x, this.y);
+                        }
+                        this.frame++;
+                        //if we reach end of sequence reset to 0
+                        if (this.frame === 40) {
+                            this.frame = 0;
+                        }
+                    }
+                }
+            };
+
+            //player object
+            var player = {
+                x: 400, //x and y
+                y: 300,
+                xSpeed: 2, //x and y movement speed
+                ySpeed: 2,
+                screenX: 2, //which screen they are on - there is a layout of 4x4 so we use a grid system
+                screenY: 2,
+                facing: "up", //which way they are facing so we can draw the proper animation
+                width: 41, //max width and height of player so we can use for collisions
+                height: 41,
+                ableToMoveUp: true, // conditions that will decide whether the player is allowed to move 
+                ableToMoveDown: true, //so if they hit the edge of the world this would be set to false
+                ableToMoveLeft: true,
+                ableToMoveRight: true,
+                playerUp1: new Image(), // all the images for the walking animations
+                playerUp2: new Image(),
+                playerUp3: new Image(),
+                playerDown1: new Image(),
+                playerDown2: new Image(),
+                playerDown3: new Image(),
+                playerLeft1: new Image(),
+                playerLeft2: new Image(),
+                playerLeft3: new Image(),
+                playerRight1: new Image(),
+                playerRight2: new Image(),
+                playerRight3: new Image(),
+                frame: 0, //which frame of animation they are on
+                //a function that moves the player and sets the direction that they are facing
+                move: function () {
+                    //if they press up move the player up until they hit the border
+                    if (pressUp && this.ableToMoveUp) {
+                        this.y -= this.ySpeed;
+                        this.facing = "up";
+                    }
+                    //if they press down move the player down until they hit the border
+                    if (pressDown && this.ableToMoveDown) {
+                        this.y += this.ySpeed;
+                        this.facing = "down";
+
+                    }
+                    //if they press right move the player right until they hit the border
+                    if (pressRight && this.ableToMoveRight) {
+                        this.x += this.xSpeed;
+                        this.facing = "right";
+
+                    }
+                    //if they press left move the player left until they hit the border
+                    if (pressLeft && this.ableToMoveLeft) {
+                        this.x -= this.xSpeed;
+                        this.facing = "left";
+
+                    }
+                },
+                //a function that will check if the user reaches the edge of a screen and then it will 
+                //switch to the next one
+                switchScreen: function () {
+                    //check if the user reached the top edge fo the screen
+                    //switching screen hitbox is smaller then hittng the edge of the world hitbox so they
+                    //never happen at the same time only one or the other since you have to pass the border
+                    // hitbox to switch screens
+                    if (this.y < 5) {
+                        //move the player to the screen above and set the player position to botton of screen
+                        this.screenY -= 1;
+                        this.y = 559;
+                    }
+                    //if they hit the botton
+                    if (this.y + this.height > 600) {
+                        //more the player a screen down and set the player positio to the top of the screen
+                        this.screenY += 1;
+                        this.y = 10;
+                    }
+                    //if they hit the left side
+                    if (this.x < 5) {
+                        //more the player a screen left and set the player position to the right side
+                        this.screenX -= 1;
+                        this.x = 759;
+                    }
+                    //if they hit the right side
+                    if (this.x + this.width > 800) {
+                        //more the player a screen right and set the player position to the right side
+                        this.screenX += 1;
+                        this.x = 7;
+                    }
+                },
+                //a function that animates the player movement
+                animate: function () {
+                    //check which way they are facing and show the correspoding image also if they are not
+                    //moving then just show the still image
+                    if (this.facing === "up") {
+                        //if they are moving in the direction they are facing then do the animaiton
+                        if (pressUp) {
+                            //call animation function
+                            playerAnimation(player, player.playerUp1, player.playerUp2, player.playerUp1, player.playerUp3);
+                        } else {
+                            //otherwise just draw a static image
+                            ctx.drawImage(this.playerUp1, this.x, this.y);
+                        }
+                    } else if (this.facing === "down") {  // same thing but now for facing down
+                        if (pressDown) {
+                            //call animation function
+                            playerAnimation(player, player.playerDown1, player.playerDown2, player.playerDown1, player.playerDown3);
+
+                        } else {
+                            //draw still image
+                            ctx.drawImage(this.playerDown1, this.x, this.y);
+                        }
+                    } else if (this.facing === "left") { // same thing but not for moving left
+                        if (pressLeft) {
+                            //call animation function
+                            playerAnimation(player, player.playerLeft1, player.playerLeft2, player.playerLeft1, player.playerLeft3);
+                        } else {
+                            //draw still image when not moving
+                            ctx.drawImage(this.playerLeft1, this.x, this.y);
+                        }
+                    } else if (this.facing === "right") { // same thing but now for facing right
+                        if (pressRight) {
+                            //call animation function
+                            playerAnimation(player, player.playerRight1, player.playerRight2, player.playerRight1, player.playerRight3);
+
+                        } else {
+                            //draw still image when not moving
+                            ctx.drawImage(this.playerRight1, this.x, this.y);
+                        }
+                    }
+                },
+                //a function that checks if the user has hit the edge of the screen
+                checkTopBorder: function () {
+                    //if they hit the top before the switch screen collision
+                    if (this.y < 8) {
+                        //they cant move now
+                        this.ableToMoveUp = false;
+                    }
+                },
+                //a function that checks if the user has hit the edge of the screen
+                checkBottomBorder: function () {
+                    //if they hit the bottom
+                    if (this.y + this.height > 596) {
+                        //they cant move anymore
+                        this.ableToMoveDown = false;
+                    }
+                },
+                //a function that checks if the user has hit the edge of the screen
+                checkLeftBorder: function () {
+                    //if they hit the left side
+                    if (this.x < 8) {
+                        //they cant move anymore
+                        this.ableToMoveLeft = false;
+                    }
+                },
+                //a function that checks if the user has hit the edge of the screen
+                checkRightBorder: function () {
+                    //if they hit the right side before the switch side collision
+                    if (this.x + this.width > 796) {
+                        //they cant move now
+                        this.ableToMoveRight = false;
+                    }
+                },
+                //a function that will check for border collision depending on if they the scren needs it
+                checkBorderCollision: function () {
+                    //if they are on the top or bottom row check if they hit the top or bottom border
+                    if (this.screenY === 1) {
+                        this.checkTopBorder();
+                    } else if (this.screenY === 3) {
+                        this.checkBottomBorder();
+                    }
+                    //if they are on the left or right collumn check if they hit either side's border
+                    if (this.screenX === 1) {
+                        this.checkLeftBorder();
+                    } else if (this.screenX === 3) {
+                        this.checkRightBorder();
+                    }
+                }
+            };
+
+            //a function for the player animation
+            function playerAnimation(object, frame1, frame2, frame3, frame4) {
+                //basically same code from title guy animation, depending on frame we will draw an image
+                if (object.frame >= 0 && object.frame < 10) {
+                    ctx.drawImage(frame1, object.x, object.y);
+                    object.frame++;
+                } else if (object.frame >= 10 && object.frame < 20) {
+                    ctx.drawImage(frame2, object.x, object.y);
+                    object.frame++;
+                } else if (object.frame >= 20 && object.frame < 30) {
+                    object.frame++;
+                    ctx.drawImage(frame3, object.x, object.y);
+                } else if (object.frame >= 30 && object.frame < 40) {
+                    ctx.drawImage(frame4, object.x, object.y);
+                    object.frame++;
+                    //if we reach end of sequence reset to 0
+                    if (object.frame === 40) {
+                        object.frame = 0;
+                    }
+                }
+            }
+
+            //a function the loads the images
+            function loadImages() {
+                //load images
+                titleGuy.titleRightUpImgRight.src = "title_RightUpRight.png";
+                titleGuy.titleStillImgRight.src = "title_StillRight.png";
+                titleGuy.titleLeftUpImgRight.src = "title_LeftUpRight.png";
+                titleGuy.titleRightUpImgLeft.src = "title_RightUpLeft.png";
+                titleGuy.titleStillImgLeft.src = "title_StillLeft.png";
+                titleGuy.titleLeftUpImgLeft.src = "title_LeftUpLeft.png";
+                thoughtBubbleImg.src = "thoughtBubble.png";
+                player.playerUp1.src = "playerUp1.png";
+                player.playerUp2.src = "playerUp2.png";
+                player.playerUp3.src = "playerUp3.png";
+                player.playerDown1.src = "playerDown1.png";
+                player.playerDown2.src = "playerDown2.png";
+                player.playerDown3.src = "playerDown3.png";
+                player.playerRight1.src = "playerRight1.png";
+                player.playerRight2.src = "playerRight2.png";
+                player.playerRight3.src = "playerRight3.png";
+                player.playerLeft1.src = "playerLeft1.png";
+                player.playerLeft2.src = "playerLeft2.png";
+                player.playerLeft3.src = "playerLeft3.png";
+                orbNotFound.src = "OrbNotFound.png";
+                purpleOrbSmall.src = "PurpleOrbSmall.png";
+                blueOrbSmall.src = "BlueOrbSmall.png";
+                greenOrbSmall.src = "GreenOrbSmall.png";
+                orangeOrbSmall.src = "OrangeOrbSmall.png";
+                //load the images for all the entities
+                for (var i = 0; i < entities.length; i++) {
+                    entities[i].image.src = entities[i].imageLocation;
+                }
+            }
+
+
+            //a function that handles drawing the buttons on the titleScreen
+            function titleButtons() {
+                //if the user presses up or down change which button we are on and if they press space
+                //change the gameState
+                if (pressUp === true) {
+                    //change to play
+                    titleButtonPressed = "play";
+                } else if (pressDown === true) {
+                    //change to info
+                    titleButtonPressed = "info";
+                } else if (interact === true) {
+                    //if they were on the playe button chnage ot play state
+                    if (titleButtonPressed === "play") {
+                        gameState = "play";
+                        //reset everything
+                        player.x = 400;
+                        player.y = 300;
+                        player.screenX = 2;
+                        player.screenY = 2;
+                        purpleOrbFound = false;
+                        blueOrbFound = false;
+                        greenOrbFound = false;
+                        orangeOrbFound = false;
+                        //for the first 4 entries in the entities array (which are the orbs) reset postition
+                        for (var i = 0; i < 4; i++) {
+                            entities[i].x = Math.floor(Math.random() * 700) + 50;
+                            entities[i].y = Math.floor(Math.random() * 500) + 50;
+                            entities[i].screenX = Math.floor(Math.random() * 3) + 1;
+                            entities[i].screenY = Math.floor(Math.random() * 3) + 1;
+                        }
+                    } else { //if they were on the info button change to info state
+                        gameState = "info";
+                    }
+
+                }
+                //draw the play button
+                if (titleButtonPressed === "play") {
+                    ctx.fillStyle = "#46FF62";
+                } else {
+                    ctx.fillStyle = "#00BB1C";
+                }
+                rect(300, 250, 200, 75, true, "#000000", 10);
+                //draw the play button text
+                ctx.fillStyle = "#000000";
+                ctx.font = "40px 'Press Start 2P'";
+                ctx.fillText("PLAY", 323, 310);
+                //draw the info button
+                //depending on wihch button the user is on we will use a different colour
+                if (titleButtonPressed === "info") {
+                    ctx.fillStyle = "#46FF62";
+                } else {
+                    ctx.fillStyle = "#00BB1C";
+                }
+                rect(300, 350, 200, 75, true, "#000000", 10);
+                //draw the info button text
+                ctx.fillStyle = "#000000";
+                ctx.font = "40px 'Press Start 2P'";
+                ctx.fillText("INFO", 320, 410);
+            }
+
+            //a function that clears the screen with a rectange of your colour choice
+            function clear(colour) {
+                ctx.fillStyle = colour; //black
+                rect(0, 0, WIDTH, HEIGHT, false);
+            }
+
+            //function that draws a circle with the x,y, and radius that you enter
+            function circle(x, y, r) {
+                ctx.beginPath();
+                ctx.arc(x, y, r, 0, Math.PI * 2, true);
+                ctx.closePath();
+                ctx.fill();
+            }
+
+            //a function that draws a rectangle with a x,y,width, and height that you choose and also a 
+            //border if you choose
+            function rect(x, y, w, h, stroke, strokeColour, strokeWeight) {
+                ctx.beginPath();
+                ctx.rect(x, y, w, h);
+                if (stroke) {
+                    ctx.lineWidth = strokeWeight;
+                    ctx.strokeStyle = strokeColour;
+                    ctx.stroke();
+                }
+                ctx.closePath();
+                ctx.fill();
+            }
+
+            //a function that makes a line betweeen two points that you pick and with the colour of your choice
+            function line(x1, y1, x2, y2, colour, width) {
+                ctx.beginPath();
+                ctx.strokeStyle = colour;
+                ctx.lineWidth = width;
+                ctx.moveTo(x1, y1);
+                ctx.lineTo(x2, y2);
+                ctx.stroke();
+                ctx.closePath();
+            }
+
+            //the title screen function
+            function titleScreen() {
+                //clear the screen with blue
+                clear("#0A90DE");
+                //change the colour then make a rectangle for grass
+                ctx.fillStyle = "#0AC526";
+                rect(0, 540, 800, 60, false);
+                //change the colour and show the game title text
+                ctx.fillStyle = "#000000";
+                ctx.font = "40px 'Press Start 2P'";
+                ctx.fillText("Walking", 110, 100);
+                ctx.fillText("Simulator", 250, 170);
+                ctx.font = "10px 'Press Start 2P'";
+                ctx.fillText("By: Araib Basit", 325, 210);
+                //call the title guy functions to animate it walking around
+                titleGuy.newSpot();
+                titleGuy.move();
+                titleGuy.animate();
+                //invoke the titleButtons function to draw the buttons
+                titleButtons();
+            }
+
+            //a function that draws the info screen
+            function infoScreen() {
+                //draw background
+                clear("#0A90DE");
+                //if they hit escape then go back to title screen
+                if (escapeKey) {
+                    gameState = "title";
+                }
+                //show text
+                ctx.fillStyle = "#000000";
+                ctx.font = "40px 'Press Start 2P'";
+                ctx.fillText("Instructions:", 130, 100);
+                line(130, 110, 640, 110, "#000000", 10);
+                ctx.font = "20px 'Press Start 2P'";
+                ctx.fillText("Use the arrow keys or WASD to move", 70, 170);
+                ctx.fillText("Press space to interact with everything", 10, 210);
+                ctx.font = "19px 'Press Start 2P'";
+                ctx.fillText("Hit escape to return to the title screen", 20, 250);
+                ctx.font = "8px 'Press Start 2P'";
+                ctx.fillText("All grahics and code made by Araib Basit. (Copyright 2024 Basit Studios)", 20, 575);
+                //draw image of the title guy
+                ctx.drawImage(titleGuy.titleStillImgLeft, 650, 500);
+                //draw image of thought bubble
+                ctx.drawImage(thoughtBubbleImg, 640, 420);
+                //draw the text for the thought bubble
+                ctx.font = "7px 'Press Start 2P'";
+                ctx.fillText("Where am I?", 648, 464);
+            }
+
+            //init function that sets up the game then starts the game function
+            function init() {
+                ctx = document.getElementById('canvas').getContext('2d');
+                //set width and height variables
+                WIDTH = ctx.canvas.width;
+                HEIGHT = ctx.canvas.height;
+                //load images
+                loadImages();
+                //set gameState
+                gameState = "title";
+                //starts the game
+                requestAnimationFrame(game);
+            }
+
+            //functions that handles keypresses
+            function onKeyDown(evt) {
+                if (evt.keyCode === 87 || evt.keyCode === 38) { //up, w
+                    pressUp = true;
+                }
+                if (evt.keyCode === 83 || evt.keyCode === 40) { //down, s
+                    pressDown = true;
+                }
+                if (evt.keyCode === 65 || evt.keyCode === 37) { //left, a
+                    pressLeft = true;
+                }
+                if (evt.keyCode === 68 || evt.keyCode === 39) { //right, d
+                    pressRight = true;
+                }
+                if (evt.keyCode === 32) { //space
+                    interact = true;
+                }
+                if (evt.keyCode === 27) { //esc
+                    escapeKey = true;
+                }
+                if (evt.keyCode === 67) { //c
+                    pressC = true;
+                }
+            }
+            //set to false when the user stops pressing
+            function onKeyUp(evt) {
+
+                if (evt.keyCode === 87 || evt.keyCode === 38) { //up, w
+                    pressUp = false;
+                }
+                if (evt.keyCode === 83 || evt.keyCode === 40) { //down, s
+                    pressDown = false;
+                }
+                if (evt.keyCode === 65 || evt.keyCode === 37) { //left, a
+                    pressLeft = false;
+                }
+                if (evt.keyCode === 68 || evt.keyCode === 39) { //right, d
+                    pressRight = false;
+                }
+                if (evt.keyCode === 32) { //space
+                    interact = false;
+                }
+                if (evt.keyCode === 27) { //esc
+                    escapeKey = false;
+                }
+                if (evt.keyCode === 67) { //c
+                    pressC = false;
+                }
+            }
+
+            //ther main game loop - a function that handles which screen to be on and display
+            function game() {
+                if (gameState === "title") {
+                    //invoke title screen function
+                    titleScreen();
+                } else if (gameState === "play") {
+                    //if they press escape return to title
+                    if (escapeKey) {
+                        gameState = "title";
+                    }
+                    //draw background 
+                    drawGameBackground();
+
+                    //move the player then animate it
+                    player.move();
+                    player.animate();
+
+                    //draw other entities
+                    drawGameEntities();
+
+                    //check if the game entities have been interacted with
+                    for (var i = 0; i < entities.length; i++) {
+                        entities[i].interact();
+                    }
+
+                    //draw the players location
+                    drawScreenLocation();
+
+                    //check if there is an active textbox and if there is call the textbox function otherwise set all mvoement ot true
+                    if (activeTextbox) {
+                        textbox(textboxText);
+                        //if they press c then set active textbox to false
+                        if (pressC) {
+                            activeTextbox = false;
+                            //depending on the object we are on then we will carry out certaine action once the user is done interacting with it
+                            if (interactedName === "purpleOrb") {
+                                purpleOrbFound = true;
+                            } else if (interactedName === "blueOrb") {
+                                blueOrbFound = true;
+                            } else if (interactedName === "greenOrb") {
+                                greenOrbFound = true;
+                            } else if (interactedName === "orangeOrb") {
+                                orangeOrbFound = true;
+                            } else if (interactedName === "portal") {
+                                gameState = "end";
+                            }
+                        }
+                    } else {
+                        //set all movement to true
+                        player.ableToMoveDown = true;
+                        player.ableToMoveUp = true;
+                        player.ableToMoveLeft = true;
+                        player.ableToMoveRight = true;
+                    }
+
+
+                    //check if we need to switch screen or if we hit the border
+                    player.switchScreen();
+                    player.checkBorderCollision();
+
+                    //draw the progress
+                    drawProgress();
+
+                } else if (gameState === "info") {
+                    //invoke the function for the title screen
+                    infoScreen();
+                } else if (gameState === "end") {
+                    //clear the screen
+                    clear("#000000");
+                    //draw all text
+                    ctx.fillStyle = "#FF0000";
+                    ctx.font = "60px 'Press Start 2P'";
+                    ctx.fillText("Game", 280, 200);
+                    ctx.fillText("Over", 300, 300);
+                    ctx.fillStyle = "#ffffff";
+                    ctx.font = "20px 'Press Start 2P'";
+                    ctx.fillText("The End.?", 310, 400);
+                    ctx.font = "15px 'Press Start 2P'";
+                    ctx.fillText("Press space to continue.", 425, 585);
+                    //if they press space go back to the menu
+                    if (interact) {
+                        //set interact to false so they dont instantly go thourgh the menu
+                        interact = false;
+                        gameState = "title";
+                    }
+                }
+
+                //request next frame
+                requestAnimationFrame(game);
+            }
+
+            //force the title
+            document.title = "Walking simulator";
+            //give the canvas focus
+            document.getElementById('canvas').focus();
+            //call the init function when the window loads
+            window.addEventListener("load", init, false);
+            //call the key press functions when keys are pressed
+            window.addEventListener("keydown", onKeyDown, false);
+            window.addEventListener("keyup", onKeyUp, false);
+
+        </script>
+    </body>
+</html>
